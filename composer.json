@@ -1,0 +1,20 @@
+{
+    "name": "wuzhiqiang/code_maker",
+    "description": "code maker",
+    "require": {
+        "illuminate/redis": "^5.1"
+    },
+    "license": "1.0",
+    "authors": [
+        {
+            "name": "wuzhiqiang",
+            "email": "wuzhiqiang@rongyi.com"
+        }
+    ],
+    "repositories": {
+        "packagist": {
+            "type": "composer",
+            "url": "https://packagist.phpcomposer.com"
+        }
+    }
+}
