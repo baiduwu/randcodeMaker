@@ -2,7 +2,8 @@
     "name": "wuzhiqiang/code_maker",
     "description": "code maker",
     "require": {
-        "illuminate/redis": "^5.1"
+        "illuminate/redis": "^5.1",
+      "illuminate/database": "^5.2"
     },
     "license": "1.0",
     "authors": [
