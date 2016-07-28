@@ -3,7 +3,12 @@
     "description": "code maker",
     "require": {
         "illuminate/redis": "^5.1",
-      "illuminate/database": "^5.2"
+      "illuminate/database": "^5.2",
+        "illuminate/events": "^5.2",
+        "illuminate/config": "^5.2",
+        "illuminate/queue": "^5.2",
+        "illuminate/bus": "^5.2",
+        "illuminate/encryption": "^5.2"
     },
     "license": "1.0",
     "authors": [
@@ -17,5 +22,15 @@
             "type": "composer",
             "url": "https://packagist.phpcomposer.com"
         }
+    },
+  "autoload": {
+    "psr-4": {
+      "test\\": "test/"
     }
+  },
+  "autoload-dev": {
+    "classmap": [
+      "test/"
+    ]
+  }
 }

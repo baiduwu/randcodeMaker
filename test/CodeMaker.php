@@ -1,14 +1,19 @@
 <?php
-namespace App\Models;
-
+namespace test;
+use Illuminate\Encryption\Encrypter;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Input;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Database\Eloquent\Model;
 use App\Services\ErrMapping;
 use App\Services\RedisKey;
-use App\Jobs\CoderMakerJob;
-use Illuminate\Support\Facades\Queue;
+use Maatwebsite\Excel\Readers\ConfigReader;
+use Illuminate\Config\Repository;
+use Illuminate\Database\Capsule\Manager as Capsule;
+use Illuminate\Queue\Capsule\Manager as Queue;
+use Illuminate\Container\Container as Container;
+use Illuminate\Redis;
 
 class CodeMaker extends Model
 {
@@ -23,8 +28,11 @@ class CodeMaker extends Model
     const ALLOCATION_INTERVAL_STATUS_FAIL = 3;//装载完成
 
     public function __construct() {
-        $this->_caller = config('code.caller');
-        $this->_codeMaxValue = config('code.code_max_value');
+
+        $config = new Repository(require 'config/code.php');
+        $configs = $config->all();
+        $this->_caller = $configs['caller'];
+        $this->_codeMaxValue = $configs['code_max_value'];
         //var_dump($this->_codeMaxValue);exit;
     }
 
@@ -66,7 +74,7 @@ class CodeMaker extends Model
         $codeConfig = array('caller_id' => $callerId, 'caller_unique_id' => $callerUniqueId, 'code_max_value' => $codeMaxValue, 'interval_num' => $intervalNum, //'current_interval_' => 0,
             'threshold' => $threshold,);
         try {
-            DB::beginTransaction();
+            Capsule::beginTransaction();
             self::addCodeConfig($codeConfig);
             //进队列 需要计算$codeStart, $codeEnd
             $codeStart = 1;
@@ -75,7 +83,10 @@ class CodeMaker extends Model
             DB::commit();
         }
         catch (\Exception $e) {
-            DB::rollBack();
+            echo 'line'.$e->getLine();
+            echo 'msg'.$e->getMessage();
+            //Log::info($e->getMessage());
+            Capsule::rollBack();
             throw $e;
         }
         return 1;
@@ -239,7 +250,7 @@ class CodeMaker extends Model
     }
 
     private function pushCoderMaker($callerId, $callerUniqueId, $intervalId, $codeStart, $codeEnd, $allocationIntervalId) {
-        Log::info('new internal');
+        //Log::info('new internal');
         $detail = self::codeConfigDetail($callerId, $callerUniqueId, true);
         if (!empty($detail) && $allocationIntervalId < $detail['allocation_interval_id']) {
             Log::info(sprintf("class[%s] func[%s] callId[%s] callerUniqueId[%s]  msg[遇到并发了！已装载当前区间:%s提取码]", __CLASS__, __FUNCTION__, $callerId, $callerUniqueId, $intervalId));
@@ -247,8 +258,58 @@ class CodeMaker extends Model
         }
         try {
             //$cond = ['caller_id' => $callerId, 'caller_unique_id' => $callerUniqueId];
+            $container = new Container();
+            $server = array(
+                'default' => [
+                    'code_maker' => [
+                        'host'     => '127.0.0.1',
+                        'port'     => 6379,
+                        'database' => 0,
+                        'parameters'=>[
+                            'password' =>  ''
+                        ]
+                    ]
+                ],
+            );
+            $container->instance('redis',new Redis\Database($server));
+            $config = array(
+               'queue' => [
+                   'default' => [
+                       'host'     => '127.0.0.1',
+                       'port'     => 6379,
+                       'database' => 0,
+                       'parameters'=>[
+                           'password' =>  ''
+                       ]
+                   ],
+                   'connections' => [
+                       'host'     => '127.0.0.1',
+                       'port'     => 6379,
+                       'database' => 0,
+                       'parameters'=>[
+                           'password' =>  ''
+                       ]
+                   ]
+               ]
+            );
+            $re = new Repository($config);
+            $container->instance('config',$re);
+            $key = 'wwwwwwww11111111';
+            $encrypter =new Encrypter($key);
+            $container->instance('encrypter',$encrypter);
+
             $job = new CoderMakerJob($callerId, $callerUniqueId, $intervalId, $codeStart, $codeEnd);
-            $jobId = Queue::connection('code_maker')->push($job);
+            $queue = new Queue($container);
+            //$queue->setContainer($container);
+            //$queue->getContainer()->make('config')
+            $queue->addConnection([
+                'driver' => 'redis',
+                'host' => '127.0.0.1',
+                'queue' => 'default',
+            ]);
+            $queue->setAsGlobal();
+            //$queue->push('SendEmail', array('message' => 'ff'));
+            $jobId = $queue->push('code_maker',$job);
             Log::info('jobId:' . $jobId);
             if ($jobId) {
                 //更新当前 区间id 的装载状态为 ing
