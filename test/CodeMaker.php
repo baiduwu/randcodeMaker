@@ -1,8 +1,7 @@
 <?php
-namespace test;
+namespace codemaker;
 use Illuminate\Encryption\Encrypter;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Input;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Database\Eloquent\Model;
@@ -14,6 +13,8 @@ use Illuminate\Database\Capsule\Manager as Capsule;
 use Illuminate\Queue\Capsule\Manager as Queue;
 use Illuminate\Container\Container as Container;
 use Illuminate\Redis;
+use Illuminate\Log;
+use Monolog;
 
 class CodeMaker extends Model
 {
@@ -41,6 +42,10 @@ class CodeMaker extends Model
             self::$_instance = new self();
         }
         return self::$_instance;
+    }
+
+    public function test(){
+        echo 'this is code maker test';
     }
 
     public function applyService($callerId, $callerUniqueId, $codeMaxValue, $intervalNum, $threshold) {
@@ -298,6 +303,10 @@ class CodeMaker extends Model
             $encrypter =new Encrypter($key);
             $container->instance('encrypter',$encrypter);
 
+            new Log\Writer(new Monolog());
+
+            $container->instance('log',new Writer(new MonologLogger()));
+
             $job = new CoderMakerJob($callerId, $callerUniqueId, $intervalId, $codeStart, $codeEnd);
             $queue = new Queue($container);
             //$queue->setContainer($container);
@@ -309,7 +318,8 @@ class CodeMaker extends Model
             ]);
             $queue->setAsGlobal();
             //$queue->push('SendEmail', array('message' => 'ff'));
-            $jobId = $queue->push('code_maker',$job);
+            $jobId = $queue->push($job,'code_maker');
+            Log::setFacadeApplication($container);
             Log::info('jobId:' . $jobId);
             if ($jobId) {
                 //更新当前 区间id 的装载状态为 ing

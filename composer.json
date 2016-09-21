@@ -8,7 +8,8 @@
         "illuminate/config": "^5.2",
         "illuminate/queue": "^5.2",
         "illuminate/bus": "^5.2",
-        "illuminate/encryption": "^5.2"
+        "illuminate/encryption": "^5.2",
+        "illuminate/log": "^5.2"
     },
     "license": "1.0",
     "authors": [
@@ -25,7 +26,7 @@
     },
   "autoload": {
     "psr-4": {
-      "test\\": "test/"
+      "codemaker\\": "test/"
     }
   },
   "autoload-dev": {
